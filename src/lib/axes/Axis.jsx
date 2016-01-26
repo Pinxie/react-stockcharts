@@ -5,6 +5,17 @@ import React from "react";
 import AxisTicks from "./AxisTicks";
 import AxisLine from "./AxisLine";
 
+//TODO REFACTOR
+function d3_scaleExtent(domain) {
+	var start = domain[0], stop = domain[domain.length - 1];
+	return start < stop ? [start, stop] : [stop, start];
+}
+
+function d3_scaleRange(scale) {
+	return scale.rangeExtent ? scale.rangeExtent() : d3_scaleExtent(scale.range());
+}
+
+
 class Axis extends React.Component {
 	constructor(props) {
 		super(props);
@@ -35,7 +46,6 @@ class Axis extends React.Component {
 	drawOnCanvas(ctx) {
 		var { chartData, margin, canvasOriginX, canvasOriginY } = this.context;
 		var { scale } = this.props;
-
 		Axis.drawOnCanvasStatic(margin, this.props, [canvasOriginX, canvasOriginY], ctx, chartData, scale, scale);
 	}
 
@@ -77,6 +87,11 @@ Axis.propTypes = {
 	showTicks: React.PropTypes.bool.isRequired,
 	fontFamily: React.PropTypes.string,
 	fontSize: React.PropTypes.number.isRequired,
+	axisName: React.PropTypes.string,
+	axisNameOffset : React.PropTypes.number,
+	axisNameFontFamily : React.PropTypes.string,
+	axisNameFontSize : React.PropTypes.number,
+	axisNameMaxSize: React.PropTypes.number
 };
 
 Axis.defaultProps = {
@@ -85,6 +100,10 @@ Axis.defaultProps = {
 	showTicks: true,
 	fontFamily: "Helvetica Neue, Helvetica, Arial, sans-serif",
 	fontSize: 12,
+	axisNameFontSize : 10,
+	axisNameOffset : 20,
+	axisNameFontFamily: "Helvetica Neue, Helvetica, Arial, sans-serif",
+	axisNameMaxSize: 1000
 };
 
 Axis.contextTypes = {
@@ -100,15 +119,24 @@ Axis.contextTypes = {
 };
 
 Axis.drawOnCanvasStatic = (margin, props, canvasOrigin, ctx, chartData, xScale, yScale) => {
-	var { transform, showDomain, showTicks } = props;
+	var { transform, showDomain, showTicks ,axisName,fontFamily, orient, axisNameFontSize,axisNameOffset,axisNameFontFamily, axisNameMaxSize} = props;
+	var xOffsetMult = (orient === "top" || orient === "bottom") ? 1 : 0;
+	var yOffsetMult = (orient === "right" || orient === "left") ? -1 : 0;
 	ctx.save();
 
 	ctx.setTransform(1, 0, 0, 1, 0, 0);
 	ctx.translate(canvasOrigin[0] + transform[0], canvasOrigin[1] + transform[1]);
+	
+	var xAxis = (orient === "bottom" || orient === "top");
 
+	var range = d3_scaleRange(xAxis ? xScale : yScale);
+	let rangeOffset = xAxis? range[1] : 0;
+	
+	ctx.textAlign="center"; 
+	ctx.font = `${ axisNameFontSize }px ${axisNameFontFamily}`;
+	ctx.fillText(axisName,rangeOffset +xOffsetMult * axisNameOffset, yOffsetMult * axisNameOffset, axisNameMaxSize);
 	if (showDomain) AxisLine.drawOnCanvasStatic(props, ctx, chartData, xScale, yScale);
 	if (showTicks) AxisTicks.drawOnCanvasStatic(props, ctx, chartData, xScale, yScale);
-
 	ctx.restore();
 };
 
