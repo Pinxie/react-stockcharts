@@ -166,6 +166,14 @@ export function getChartPlotFor(config, scaleType, partialData, domainL, domainR
 		.filter(indicator => indicator.domain !== undefined)
 		.map(indicator => indicator.domain());
 
+
+	//MINDOMAIN GET
+	var minDomains = indicators
+	.filter(indicator => indicator !== undefined)
+	.filter(indicator => indicator.minDomain !== undefined)
+	.map(indicator => indicator.minDomain());
+	//END
+	
 	var domain;
 	if (domains.length > 0) {
 		domain = domains.reduce((a, b) => {
@@ -173,13 +181,22 @@ export function getChartPlotFor(config, scaleType, partialData, domainL, domainR
 		});
 	}
 
+	//MINDOMAIN GET
+	var minDomain;
+	if (minDomains.length > 0) {
+		minDomain = minDomains.reduce((a, b) => {
+			return [Math.min(a[0], b[0]), Math.max(a[1], b[1])];
+		});
+	}
+	//END
+	
 	if (!config.yDomainUpdate) {
 		domain = scaleType.yScale.domain();
 	}
 
 	var scales = {
 		xScale: updateXScale(xyValues.xValues, scaleType.xScale, partialData, config.width, config.padding),
-		yScale: updateYScale(xyValues.yValues, scaleType.yScale, partialData, config.height, config.padding, domain),
+		yScale: updateYScale(xyValues.yValues, scaleType.yScale, partialData, config.height, config.padding, domain, minDomain),
 	}
 
 	if (domainL !== undefined && domainR !== undefined) {
@@ -425,13 +442,23 @@ export function updateXScale(xValues, xScale, data, width, padding, overrideXDom
 	return copy;
 };
 
-export function updateYScale(yValues, yScale, data, height, padding, overrideYDomain) {
+export function updateYScale(yValues, yScale, data, height, padding, overrideYDomain, minDomain) {
 	var copy = yScale.copy();
 
 	copy.range([height - padding.top, padding.bottom]);
 
 	if (isDefined(overrideYDomain)) {
+
 		copy.domain(overrideYDomain);
+	} else if (isDefined(minDomain)){
+		let domain = d3.extent(yValues);
+		if (domain[0] < minDomain[0]){
+			minDomain[0] = domain[0];
+		}
+		if (domain[1] > minDomain[1]){
+			minDomain[1] = domain[1];
+		}
+		copy.domain(minDomain);
 	} else {
 		var domain = d3.extent(yValues);
 		copy.domain(domain);
