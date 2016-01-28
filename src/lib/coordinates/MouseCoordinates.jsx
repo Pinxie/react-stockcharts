@@ -149,6 +149,7 @@ MouseCoordinates.helper = (props, show, mouseXY, currentCharts, chartData, curre
 		});
 
 	var singleChartData = chartData.filter((eachChartData) => eachChartData.id === mainChart)[0];
+
 	// console.log(props, show, mouseXY, currentCharts, chartData, currentItems);
 
 	// var yDisplayFormat = singleChartData.config.compareSeries.length > 0 ? (d) => (Math.round(d * 10000) / 100).toFixed(2) + "%" : this.props.yDisplayFormat;
@@ -157,16 +158,36 @@ MouseCoordinates.helper = (props, show, mouseXY, currentCharts, chartData, curre
 	if (item === undefined) return null;
 	item = item.data;
 	// console.log(singleChartData, item);
+	console.log("currentItems",currentItems);
 	var xValue = singleChartData.config.xAccessor(item);
 
 	var xDisplayValue = dateAccessor === undefined
 		? xValue
 		: dateAccessor(item);
 
-	// var yValue = singleChartData.plot.scales.yScale.invert(mouseXY[1]);
+	chartData.map( (chart) => console.log(chart.config.overlays));
+	let yAccessors = chartData.map( (chart) => chart.config.overlays.map( (over) => over.yAccessor));
+	yAccessors = [].concat.apply([], yAccessors);
+	let yValues = yAccessors.map( (accessor, i ) => currentItems.map(curItem => accessor(curItem.data)));
+	
+	console.log("yValues",yValues);
+	//flatten
+	yValues = [].concat.apply([],yValues);
+	yValues = yValues.filter(val => val != undefined);
+	let mouseYValues = yValues.map( (yValue) => singleChartData.plot.scales.yScale(yValue) );
+	console.log("mouseYValues",mouseYValues);
+	
+	let yValue = yValues.reduce( (res, cur) => cur != undefined? cur : res, undefined);
+	let mouseYValue = mouseYValues.reduce( (res, cur) => cur != undefined? cur : res, undefined);
+	
+
+	edges.map( function (edge) { edge.yDisplayValue = edge.yDisplayFormat(yValue);edge.yValue = yValue; return edge});
+	 
 	if (xValue === undefined) return null;
 	var x = snapX ? Math.round(singleChartData.plot.scales.xScale(xValue)) : mouseXY[0];
-	var y = mouseXY[1];
+	console.log(Math.round(singleChartData.plot.scales.yScale(yValue)) , yValue , xValue);
+	var y = mouseYValue;
+	console.log("XY ",x, " ",y);
 	var { stroke, opacity, textStroke, textBGFill, textBGopacity, fontFamily, fontSize } = props;
 
 	return { height, width, mouseXY: [x, y], xDisplayValue: xDisplayFormat(xDisplayValue), edges,
