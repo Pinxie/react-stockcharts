@@ -4,7 +4,7 @@ import React from "react";
 
 import pure from "../pure";
 import CrossHair from "./CrossHair";
-
+import objectAssign from "object-assign";
 import { displayDateFormat, displayNumberFormat } from "../utils/utils";
 
 class MouseCoordinates extends React.Component {
@@ -166,27 +166,46 @@ MouseCoordinates.helper = (props, show, mouseXY, currentCharts, chartData, curre
 		: dateAccessor(item);
 
 	chartData.map( (chart) => console.log(chart.config.overlays));
-	let yAccessors = chartData.map( (chart) => chart.config.overlays.map( (over) => over.yAccessor));
+	console.log("chartData",chartData);
+	let yAccessors = chartData.map( (chart) => 
+		chart.config.overlays.map( (over) => {
+			return {
+				yAccessor : over.yAccessor, 
+				yScale : chart.plot.scales.yScale
+			};}));
 	yAccessors = [].concat.apply([], yAccessors);
-	let yValues = yAccessors.map( (accessor, i ) => currentItems.map(curItem => accessor(curItem.data)));
+	console.log(yAccessors);
+	let yValAccessors = yAccessors.map( 
+			function (accessor, i) { 
+				return objectAssign({},accessor, {yValues : currentItems.map(curItem => accessor.yAccessor(curItem.data))}); });
 	
-	console.log("yValues",yValues);
-	//flatten
-	yValues = [].concat.apply([],yValues);
-	yValues = yValues.filter(val => val != undefined);
-	let mouseYValues = yValues.map( (yValue) => singleChartData.plot.scales.yScale(yValue) );
+	console.log("yValAccessors",yValAccessors);
+	
+	yValAccessors = yValAccessors.filter(function (yValA) { 
+		yValA.yValues = yValA.yValues.filter((yValue) => yValue != undefined);
+		return yValA.yValues.length != 0;
+	});
+	console.log("yValAccessor after filter", yValAccessors);
+	let mouseYValues = yValAccessors.map( (yValA) => {
+		let mouseYValues = yValA.yValues.map(yValue => {
+			return {mouseY : yValA.yScale(yValue), yValue : yValue}; 
+		}); 
+		return mouseYValues; 
+	});
 	console.log("mouseYValues",mouseYValues);
 	
-	let yValue = yValues.reduce( (res, cur) => cur != undefined? cur : res, undefined);
-	let mouseYValue = mouseYValues.reduce( (res, cur) => cur != undefined? cur : res, undefined);
-	
-
-	edges.map( function (edge) { edge.yDisplayValue = edge.yDisplayFormat(yValue);edge.yValue = yValue; return edge});
+	mouseYValues = [].concat.apply([], mouseYValues);
+//	let yValue = yValAccessors.map( (yValA) => cur != undefined? cur : res, undefined);
+	let mouseYValue = mouseYValues.reduce( (res, cur) => cur.yValue != undefined? cur : res, undefined);
+//	mouseYValue = mouseYValues[0];
+//	
+//
+	console.log("mouseYValue : ",mouseYValue);
+	edges.map( function (edge) { edge.yDisplayValue = edge.yDisplayFormat(mouseYValue.yValue); return edge});
 	 
-	if (xValue === undefined) return null;
+	if (mouseYValue == undefined || xValue === undefined) return null;
 	var x = snapX ? Math.round(singleChartData.plot.scales.xScale(xValue)) : mouseXY[0];
-	console.log(Math.round(singleChartData.plot.scales.yScale(yValue)) , yValue , xValue);
-	var y = mouseYValue;
+	var y = mouseYValue.mouseY;
 	console.log("XY ",x, " ",y);
 	var { stroke, opacity, textStroke, textBGFill, textBGopacity, fontFamily, fontSize } = props;
 
