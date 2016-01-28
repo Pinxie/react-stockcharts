@@ -157,8 +157,8 @@ MouseCoordinates.helper = (props, show, mouseXY, currentCharts, chartData, curre
 	var item = currentItems.filter((eachItem) => eachItem.id === mainChart)[0];// ChartDataUtil.getCurrentItemForChart(this.props, this.context);
 	if (item === undefined) return null;
 	item = item.data;
-	// console.log(singleChartData, item);
-	console.log("currentItems",currentItems);
+//  console.log(singleChartData, item);
+//	console.log("currentItems",currentItems);
 	var xValue = singleChartData.config.xAccessor(item);
 
 	var xDisplayValue = dateAccessor === undefined
@@ -166,41 +166,58 @@ MouseCoordinates.helper = (props, show, mouseXY, currentCharts, chartData, curre
 		: dateAccessor(item);
 
 	chartData.map( (chart) => console.log(chart.config.overlays));
-	console.log("chartData",chartData);
+	
+//	console.log("chartData",chartData);
+	
+	//yAccessor associated with scale.
 	let yAccessors = chartData.map( (chart) => 
 		chart.config.overlays.map( (over) => {
 			return {
 				yAccessor : over.yAccessor, 
 				yScale : chart.plot.scales.yScale
 			};}));
+	
+	//flatten
 	yAccessors = [].concat.apply([], yAccessors);
-	console.log(yAccessors);
+	
+//	console.log(yAccessors);
+	
+	//add currentItems to each yAccessor, try to get yValues from each yAccessor
 	let yValAccessors = yAccessors.map( 
 			function (accessor, i) { 
-				return objectAssign({},accessor, {yValues : currentItems.map(curItem => accessor.yAccessor(curItem.data))}); });
+				return objectAssign({},accessor, {yValues : currentItems.map(curItem => accessor.yAccessor(curItem.data))}); 
+			});
 	
-	console.log("yValAccessors",yValAccessors);
+//	console.log("yValAccessors",yValAccessors);
 	
+	//Some yValues might fail to be produced from items with the yAccessors, filter them.
 	yValAccessors = yValAccessors.filter(function (yValA) { 
 		yValA.yValues = yValA.yValues.filter((yValue) => yValue != undefined);
 		return yValA.yValues.length != 0;
 	});
-	console.log("yValAccessor after filter", yValAccessors);
+	
+//	console.log("yValAccessor after filter", yValAccessors);
+	
+	//translate the each yValue to its mouseY coordinate
 	let mouseYValues = yValAccessors.map( (yValA) => {
 		let mouseYValues = yValA.yValues.map(yValue => {
 			return {mouseY : yValA.yScale(yValue), yValue : yValue}; 
 		}); 
 		return mouseYValues; 
 	});
-	console.log("mouseYValues",mouseYValues);
 	
+//	console.log("mouseYValues",mouseYValues);
+	
+	//flatten
 	mouseYValues = [].concat.apply([], mouseYValues);
-//	let yValue = yValAccessors.map( (yValA) => cur != undefined? cur : res, undefined);
-	let mouseYValue = mouseYValues.reduce( (res, cur) => cur.yValue != undefined? cur : res, undefined);
-//	mouseYValue = mouseYValues[0];
+	mouseYValues = mouseYValues.filter( (cur) => cur.yValue != undefined);
+	let mouseYValue = mouseYValues.reduce( (res, cur) => Math.abs(res.mouseY - mouseXY[1]) < Math.abs(cur.mouseY - mouseXY[1])? res : cur);
+
 //	
 //
-	console.log("mouseYValue : ",mouseYValue);
+	
+//	console.log("mouseYValue : ",mouseYValue);
+	
 	edges.map( function (edge) { edge.yDisplayValue = edge.yDisplayFormat(mouseYValue.yValue); return edge});
 	 
 	if (mouseYValue == undefined || xValue === undefined) return null;
